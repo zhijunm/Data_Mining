@@ -1,0 +1,82 @@
+---
+title: "End of chapter7"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load bostonhousing data and partition
+```{r }
+housing.df <- read.csv("BostonHousing.csv", header = TRUE)
+View(housing.df)
+set.seed(111)
+train.housing <- sample(row.names(housing.df), 0.6*dim(housing.df)[1])  
+valid.housing <- setdiff(row.names(housing.df), train.housing)  
+train.housing.df <- housing.df[train.housing,-14]
+valid.housing.df <- housing.df[valid.housing,-14]
+```
+
+## normalize data and use class::k-NN using MEDV
+```{r }
+train.norm.df <- train.housing.df
+valid.norm.df <- valid.housing.df
+
+library(caret)
+norm.values <- preProcess(train.housing.df[ ,1:12], method="scale")
+train.norm.df[ ,1:12] <- predict(norm.values, train.housing.df[ ,1:12])
+valid.norm.df[ ,1:12] <- predict(norm.values, valid.housing.df[ ,1:12])
+housing.norm.df <- predict(norm.values,housing.df)
+
+library(class)
+haccuracy.df <- data.frame(k = seq(1, 5, 1), accuracy = rep(0, 5))
+
+for(i in 1:5) {
+  housing.knn.pred <- class::knn(train.norm.df[,1:12], valid.norm.df[,1:12], 
+                  cl = train.norm.df[, 13], k = i)
+  haccuracy.df[i, 2] <- RMSE(as.numeric(as.character(housing.knn.pred)), valid.norm.df[, 13])
+}
+
+haccuracy.df
+```
+
+## geting accuracy based on CAT.MEDV
+```{r}
+ctrain.housing.df <- housing.df[train.housing,-13]
+cvalid.housing.df <- housing.df[valid.housing,-13]
+
+ctrain.norm.df <- ctrain.housing.df
+cvalid.norm.df <- cvalid.housing.df
+
+library(caret)
+cnorm.values <- preProcess(ctrain.housing.df[ ,1:12], method="scale")
+ctrain.norm.df[ ,1:12] <- predict(cnorm.values, ctrain.housing.df[ ,1:12])
+cvalid.norm.df[ ,1:12] <- predict(cnorm.values, cvalid.housing.df[ ,1:12])
+chousing.norm.df <- predict(cnorm.values,housing.df)
+
+library(class)
+chaccuracy.df <- data.frame(k = seq(1, 5, 1), accuracy = rep(0, 5))
+
+for(i in 1:5) {
+  chousing.knn.pred <- class::knn(ctrain.norm.df[,1:12], cvalid.norm.df[,1:12], 
+                  cl = ctrain.norm.df[, 13], k = i)
+  chaccuracy.df[i, 2] <- confusionMatrix(as.factor(chousing.knn.pred), as.factor(cvalid.norm.df[, 13]))$overall[1]
+}
+
+chaccuracy.df
+```
+
+
+## predict new data
+```{r}
+new.df <- data.frame("CRIM" =0.2, "ZN" = 0, "INDUS"=7,"CHAS"=0,"NOX"=0.538,"RM"=6,"AGE"=62,"DIS"=4.7,"RAD"=4,"TAX"=307,"PTRATIO"=21,"LSTAT"=10)
+new.norm.df <- predict(norm.values, new.df)
+hnn <- class::knn(train = train.norm.df[, 1:12], test = new.norm.df, 
+          cl = train.norm.df[, 13], k = 1)
+print(hnn)
+str(hnn)
+row.names(train.housing.df)[attr(hnn, "hnn.index")]
+```
+
+##
