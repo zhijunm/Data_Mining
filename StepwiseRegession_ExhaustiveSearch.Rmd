@@ -1,0 +1,156 @@
+---
+title: '#4 Assignment - End of chapter 6&7'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Chapter 6.3
+## exolore numerical predictor and response (fare), CORRELATION
+```{r }
+setwd("c:/Users/mazhi/Documents/R/560_data_mining")
+airfares.df <- read.csv("Airfares.csv")
+View(airfares.df)
+cor(airfares.df[,c(5:6,9:13,16:18)])
+```
+
+## Scatterplots
+```{r pressure, echo=FALSE}
+library(ggplot2)
+ggplot(airfares.df) + geom_point(aes(x = DISTANCE, y = FARE), colour = "navy", alpha = 0.7)
+ggplot(airfares.df) + geom_point(aes(x = COUPON, y = FARE), colour = "navy", alpha = 0.7)
+ggplot(airfares.df) + geom_point(aes(x = E_INCOME, y = FARE), colour = "navy", alpha = 0.7)
+ggplot(airfares.df) + geom_point(aes(x = E_POP, y = FARE), colour = "navy", alpha = 0.7)
+```
+
+## explore % of categorical predictors
+```{r}
+vacation<-prop.table(table(airfares.df$VACATION))
+vacation
+sw<-prop.table(table(airfares.df$SW))
+sw
+slot<-prop.table(table(airfares.df$SLOT))
+slot
+gate<-prop.table(table(airfares.df$GATE))
+gate
+```
+
+## aggregate and pivot table
+```{r}
+fare_mean<-aggregate(airfares.df$FARE,by=list(VACATION=airfares.df$VACATION, 
+                                    SW=airfares.df$SW,
+                                    SLOT=airfares.df$SLOT,
+                                    GATECONDITION=airfares.df$GATE), FUN=mean) View(fare_mean)
+aggregate(airfares.df$FARE,by=list(VACATION=airfares.df$VACATION),FUN=mean)
+aggregate(airfares.df$FARE,by=list(SW=airfares.df$SW),FUN=mean)
+aggregate(airfares.df$FARE,by=list(SLOT=airfares.df$SLOT),FUN=mean)
+aggregate(airfares.df$FARE,by=list(GATECONDITION=airfares.df$GATE),FUN=mean)
+
+
+library(reshape) 
+mlt.airfares <- melt(airfares.df, id=c("VACATION", "SW","SLOT","GATE"), measure=c("FARE"))
+View(mlt.airfares)
+cast(mlt.airfares, VACATION ~ SW , subset=variable=="FARE", 
+     margins=c("grand_row", "grand_col"), mean)
+```
+
+## create dummy variables
+```{r}
+library(dummies)
+airfares.df <- airfares.df[,-c(1,2,3,4)]
+airfares.dummy <- dummy.data.frame(airfares.df, sep = ".")
+head(airfares.dummy)  
+```
+
+## Partition data into traning and validatioin
+```{r}
+set.seed(121)  
+train.rows <- sample(rownames(airfares.dummy), dim(airfares.dummy)[1]*0.6)
+train.airfares <- airfares.dummy[train.rows, ]
+View(train.airfares)
+valid.rows <- setdiff(rownames(airfares.dummy), train.rows) 
+valid.airfares <- airfares.dummy[valid.rows, ]
+airfares.lm <- lm(FARE ~ ., data = train.airfares)
+summary(airfares.lm)
+```
+
+## stepwise regression
+```{r}
+library(stats)
+airfares.lm.step <- step(airfares.lm, direction = "backward")
+summary(airfares.lm.step)  
+airfares.lm.step.pred <- predict(airfares.lm.step, valid.airfares)
+accuracy(airfares.lm.step.pred, valid.airfares$FARE)
+```
+
+## exhaustive search
+```{r}
+library(leaps)
+airfares.search <- regsubsets(FARE ~ ., data = train.airfares, nbest = 1, nvmax = 10, method = "exhaustive")
+sum<-summary(airfares.search)
+View(sum)
+sum$which
+sum$rsq
+sum$adjr2
+sum$Cp
+airfares.lm.search <- lm(FARE ~ VACATION.No+SW.Yes+HI+S_INCOME+E_INCOME+S_POP+E_POP+ SLOT.Controlled+GATE.Free+DISTANCE+PAX, data = train.airfares)
+summary(airfares.lm.search)  
+airfares.lm.search.pred <- predict(airfares.lm.search, valid.airfares)
+accuracy(airfares.lm.search.pred, valid.airfares$FARE)
+```
+
+## predict new data
+```{r}
+newdata<- data.frame(1.202,3,1,0,4442.141,28760,27664,4557004,3195503,0,1,12782,1976, 0)
+names(newdata)<-c("COUPON","NEW","VACATION.No","SW.Yes","HI","S_INCOME","E_INCOME","S_POP","E_POP","SLOT.Controlled","GATE.Free","PAX","DISTANCE","FARE")
+
+newprediction <- predict(airfares.lm.search, newdata)
+View(newprediction)
+
+newdata1<- data.frame(1.202,3,1,1,4442.141,28760,27664,4557004,3195503,0,1,12782,1976, 0)
+names(newdata1)<-c("COUPON","NEW","VACATION.No","SW.Yes","HI","S_INCOME","E_INCOME","S_POP","E_POP","SLOT.Controlled","GATE.Free","PAX","DISTANCE","FARE")
+
+newprediction1 <- predict(airfares.lm.search, newdata1)
+View(newprediction1)
+```
+
+## select only available factors
+```{r}
+View(airfares.df)
+airfares_new <- airfares.df[ , c("VACATION","S_INCOME","E_INCOME","S_POP","E_POP","DISTANCE","FARE")]
+
+set.seed(121)  
+train.rows2 <- sample(rownames(airfares_new), dim(airfares_new)[1]*0.6)
+train.airfares2 <- airfares_new[train.rows2, ]
+valid.rows2 <- setdiff(rownames(airfares_new), train.rows2) 
+valid.airfares2 <- airfares_new[valid.rows2, ]
+
+airfares.search2 <- regsubsets(FARE ~ ., data = train.airfares2, nbest = 1, nvmax = 10, method = "exhaustive")
+sum2<-summary(airfares.search2)
+View(sum2)
+sum2$which
+sum2$rsq
+sum2$adjr2
+sum2$Cp
+
+airfares.lm.search2 <- lm(FARE ~ VACATION+S_INCOME+E_INCOME+S_POP+E_POP+ DISTANCE, data = train.airfares2)
+summary(airfares.lm.search2)  
+```
+
+## use search2 model to predict new data
+```{r}
+newdata2<- data.frame("COUPON"=1.202,"NEW"=3,"VACATION"="No","SW"="No","HI"=4442.141,"S_INCOME"=28760,"E_INCOME"=27664,"S_POP"=4557004,"E_POP"=3195503,"SLOT"="Free","GATE"="Free","PAX"=12782,"DISTANCE"=1976, "FARE"=0)
+View(newdata2)
+newprediction2 <- predict(airfares.lm.search2, newdata2)
+View(newprediction2)
+```
+
+## Compare accuracy of search model and search2 model
+```{r}
+airfares.lm.search.pred <- predict(airfares.lm.search, valid.airfares)
+accuracy(airfares.lm.search.pred, valid.airfares$FARE)
+airfares.lm.search.pred2 <- predict(airfares.lm.search2, valid.airfares2)
+accuracy(airfares.lm.search.pred2, valid.airfares2$FARE)
+```
+
