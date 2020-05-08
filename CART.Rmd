@@ -1,0 +1,138 @@
+---
+title: "End of chapter9"
+author: "Zhijun Ma"
+date: "February 13, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r used cars}
+car.df <- read.csv("C:/Users/mazhi/Documents/R/560_data_mining/ToyotaCorolla.csv")
+str(car.df)
+set.seed(1)
+train.index <- sample(c(1:dim(car.df)[1]), dim(car.df)[1]*0.6)
+#the validation is the remaining rcord
+valid.index <- setdiff(c(1:dim(car.df)[1]), train.index)  
+#We now use the indexes set up to reference the rows we are sampling
+train.df <- car.df[train.index, ]
+valid.df <- car.df[valid.index, ]
+```
+
+## run a regression tree, keep min of records in terminal node=1, max # of tree level=30, cp=0.001 (least restriction)
+```{r pressure, echo=FALSE}
+library(rpart)
+library(rpart.plot)
+tr <- rpart(Price ~  Age_08_04 + KM + Fuel_Type + 
+              HP + Automatic + Doors + Quarterly_Tax + 
+              Mfr_Guarantee + Guarantee_Period + Airco + 
+              Automatic_airco + CD_Player + Powered_Windows + 
+              Sport_Model + Tow_Bar, data = train.df, method = "anova", minbucket = 1, maxdepth = 30, cp = 0.001)
+prp(tr)
+str(tr)
+t(t(tr$variable.importance))
+```
+
+## compare prediction errors of training and validation sets by RMSE error and plotting boxplots
+```{r}
+library(forecast)
+library(ggplot2)
+accuracy(predict(tr, train.df), train.df$Price)
+train.err <- predict(tr, train.df) - train.df$Price
+
+accuracy(predict(tr, valid.df), valid.df$Price)
+valid.err <- predict(tr, valid.df) - valid.df$Price
+
+err <- data.frame(Error = c(train.err, valid.err), 
+                  Set = c(rep("Training", length(train.err)),
+                          rep("Validation", length(valid.err))))
+ggplot(err, aes(x = Set, y = Error)) + geom_boxplot()
+```
+
+
+## prune the full tree using cross validation error, compare to the full tree
+```{r}
+cv <- rpart(Price ~  Age_08_04 + KM + Fuel_Type + 
+              HP + Automatic + Doors + Quarterly_Tax + 
+              Mfr_Guarantee + Guarantee_Period + Airco + 
+              Automatic_airco + CD_Player + Powered_Windows + 
+              Sport_Model + Tow_Bar, data = train.df, method = "anova",  cp = 0.001, xval = 5)
+# use printcp() to print the table. 
+printcp(cv)
+pruned.tr <- prune(cv, 
+                   cp = cv$cptable[which.min(cv$cptable[,"xerror"]),"CP"])
+
+accuracy(predict(pruned.tr, train.df), train.df$Price)
+accuracy(predict(pruned.tr, valid.df), valid.df$Price)
+```
+
+
+## create a less deeper tree, compare to the full tree on validation set
+```{r}
+tr.shallow <- rpart(Price ~  Age_08_04 + KM + Fuel_Type + 
+              HP + Automatic + Doors + Quarterly_Tax + 
+              Mfr_Guarantee + Guarantee_Period + Airco + 
+              Automatic_airco + CD_Player + Powered_Windows + 
+              Sport_Model + Tow_Bar, data = train.df, method = "anova")
+prp(tr.shallow)
+accuracy(predict(tr.shallow, train.df), train.df$Price)
+accuracy(predict(tr.shallow, valid.df), valid.df$Price)
+
+```
+
+
+## turn the price variable into categorical variable
+```{r}
+bins <- seq(min(car.df$Price), 
+            max(car.df$Price), 
+            (max(car.df$Price) - min(car.df$Price))/20)
+bins
+#the following uses bincode to determine the bin assignments
+Binned_Price <- .bincode(car.df$Price, 
+                         bins, 
+                         include.lowest = TRUE)
+# we convert the Binned_Price to factors for classification
+Binned_Price <- as.factor(Binned_Price)
+
+# we add the binned price to the data frame based on the indexes
+# this will allow us to identify the training and validation data frames
+train.df$Binned_Price <- Binned_Price[train.index]
+valid.df$Binned_Price <- Binned_Price[valid.index]
+```
+
+
+## run classification tree in CT using binned price as the output variable, keep min# of records=1
+```{r}
+tr.binned <- rpart(Binned_Price ~  Age_08_04 + KM + Fuel_Type + 
+              HP + Automatic + Doors + Quarterly_Tax + 
+              Mfr_Guarantee + Guarantee_Period + Airco + 
+              Automatic_airco + CD_Player + Powered_Windows + 
+              Sport_Model + Tow_Bar, data = train.df)
+prp(tr.binned)
+prp(tr)
+str(tr.binned)
+str(tr)
+t(t(tr$variable.importance))
+t(t(tr.binned$variable.importance))
+```
+
+
+## predict the price
+```{r}
+new.record <- data.frame("Age_08_04"=77, "KM"=117000, "Fuel_Type"="Petrol", "HP"=110, "Automatic"=0, "Doors"=5, "Quarterly_Tax"=100, "Mfr_Guarantee"=0, "Guarantee_Period"=3, "Airco"=1, "Automatic_airco"=0, "CD_Player"=0, "Powered_Windows"=0, "Sport_Model"=0, "Tow_Bar"=1)
+
+price.tr <- predict(tr,newdata = new.record)
+price.tr
+
+price.tr.bin <- bins[predict(tr.binned, newdata = new.record, type = "class")]
+price.tr.bin
+```
+
