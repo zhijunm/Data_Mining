@@ -1,0 +1,136 @@
+---
+title: "End_of_chapter11"
+author: "Zhijun Ma"
+date: "February 26, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##11.1
+```{r }
+library(neuralnet)
+df <- read.csv("c:/Users/mazhi/Documents/R/560_data_mining/cc_use.csv")
+df$unpaid <- df$used.credit==1
+df$paidoff <- df$used.credit==0
+colnames(df)[1]<-"years"
+str(df)
+
+nn <- neuralnet(unpaid + paidoff ~ years + salary, data = df, linear.output = F, hidden = 1)
+
+# display weights
+nn$weights
+
+# display predictions
+prediction(nn)
+
+# plot network
+plot(nn, rep="best")
+
+library(caret)
+predict <- compute(nn, data.frame(df$years, df$salary))
+predict
+predicted.class=apply(predict$net.result,1,which.min)-1
+str(predicted.class)
+str(df$used.credit)
+confusionMatrix(as.factor(predicted.class), as.factor(df$used.credit))
+```
+
+##11.3 
+## subset dataset
+```{r pressure, echo=FALSE}
+car.df <- read.csv("c:/Users/mazhi/Documents/R/560_data_mining/ToyotaCorolla.csv")
+car.df <- car.df[, c("Age_08_04", "KM", "Fuel_Type", "HP", "Automatic", "Doors", "Quarterly_Tax",
+"Mfr_Guarantee", "Guarantee_Period", "Airco", "Automatic_airco", "CD_Player",
+"Powered_Windows", "Sport_Model", "Tow_Bar","Price","Price")]
+```
+
+## scale numerical predictor and outcome variables to 0-1 scale
+```{r}
+library(caret)
+norm.values <- preProcess(car.df[, -c(3,17)], method="range")
+norm.values
+car.df[, -c(3,17)] <- predict(norm.values, car.df[, -c(3,17)])
+View(car.df)
+```
+
+## convert categorical predictors to dummies
+```{r}
+table(car.df$Fuel_Type)
+library(nnet)
+car.df <- cbind(class.ind(car.df$Fuel_Type),car.df[ ,-c(3)])
+View(car.df)
+```
+
+## partition data into training and validation
+```{r}
+set.seed(121)
+train<-sample(row.names(car.df), dim(car.df)[1]*0.6)
+valid<-setdiff(row.names(car.df), train)
+train.df <- car.df[train,]
+valid.df <- car.df[valid,]
+```
+
+
+```{r}
+library(neuralnet)
+## running the nn model with single laryer and 2 nodes
+nn1.2 <- neuralnet(Price ~ Age_08_04+KM+CNG+Diesel+Petrol+HP+Automatic+Doors+Quarterly_Tax+
+Mfr_Guarantee+Guarantee_Period+Airco+Automatic_airco+CD_Player+
+Powered_Windows+Sport_Model+Tow_Bar, data = train.df, hidden = 2)
+
+training.prediction1 <- compute(nn1.2, train.df[,-c(18,19)])
+a<-min(train.df$Price.1)
+b<-max(train.df$Price.1)
+predict.result1 <- (training.prediction1$net.result*(b-a)+a)
+
+validation.prediction1 <- compute(nn1.2, valid.df[,-c(18,19)])
+a<-min(valid.df$Price.1)
+b<-max(valid.df$Price.1)
+predict.result2 <- (validation.prediction1$net.result*(b-a)+a)
+
+RMSE(predict.result1, train.df$Price.1)
+RMSE(predict.result2, valid.df$Price.1)
+
+
+## running the nn model with single laryer and 5 nodes
+nn1.5 <- neuralnet(Price ~ Age_08_04+KM+CNG+Diesel+Petrol+HP+Automatic+Doors+Quarterly_Tax+
+Mfr_Guarantee+Guarantee_Period+Airco+Automatic_airco+CD_Player+
+Powered_Windows+Sport_Model+Tow_Bar, data = train.df, hidden = 5)
+
+training.prediction2 <- compute(nn1.5, train.df[,-c(18,19)])
+a<-min(train.df$Price.1)
+b<-max(train.df$Price.1)
+predict.result3 <- (training.prediction2$net.result*(b-a)+a)
+
+validation.prediction2 <- compute(nn1.5, valid.df[,-c(18,19)])
+a<-min(valid.df$Price.1)
+b<-max(valid.df$Price.1)
+predict.result4 <- (validation.prediction2$net.result*(b-a)+a)
+
+RMSE(predict.result3, train.df$Price.1)
+RMSE(predict.result4, valid.df$Price.1)
+
+## running the nn model with 2 laryer and 5 nodes
+nn2.5 <- neuralnet(Price ~ Age_08_04+KM+CNG+Diesel+Petrol+HP+Automatic+Doors+Quarterly_Tax+
+Mfr_Guarantee+Guarantee_Period+Airco+Automatic_airco+CD_Player+
+Powered_Windows+Sport_Model+Tow_Bar, data = train.df, hidden = c(5,5))
+
+training.prediction3 <- compute(nn2.5, train.df[,-c(18,19)])
+a<-min(train.df$Price.1)
+b<-max(train.df$Price.1)
+predict.result5 <- (training.prediction3$net.result*(b-a)+a)
+
+validation.prediction3 <- compute(nn2.5, valid.df[,-c(18,19)])
+a<-min(valid.df$Price.1)
+b<-max(valid.df$Price.1)
+predict.result6 <- (validation.prediction3$net.result*(b-a)+a)
+
+RMSE(predict.result5, train.df$Price.1)
+RMSE(predict.result6, valid.df$Price.1)
+
+
+```
+
