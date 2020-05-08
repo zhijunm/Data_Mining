@@ -1,0 +1,94 @@
+---
+title: "End_of_chapter15-ZhijunMa"
+author: "Zhijun Ma"
+date: "March 8, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load the data
+```{r }
+pharma.df <- read.csv("c:/Users/mazhi/Documents/R/560_data_mining//Pharmaceuticals.csv")
+head(pharma.df)
+```
+
+## # normalize
+```{r pressure, echo=FALSE}
+
+library(caret)
+#normalize. normalization gives the same importance to all the variables and 
+#so important for distance calculations.
+#we will use sapply with scale 
+pharma.df.norm <- sapply(pharma.df[3:11], scale)
+head(pharma.df.norm)
+```
+
+## 15.a clustering using ward's methods and try 2/3/4 clusters
+```{r}
+d.norm <- dist(pharma.df.norm, method = "euclidean")
+plot.new()
+hc.w <- hclust(d.norm, method = "ward.D")
+plot(hc.w, hang = -1, ann = FALSE)
+#let's look at the clusters by using cutree
+memb5 <- cutree(hc.w, k = 5) # cut 5 clusters
+memb5
+memb4 <- cutree(hc.w, k = 4) # cut 4 clusters
+memb4
+memb3 <- cutree(hc.w, k = 3) # cut 3 clusters
+memb3
+memb2 <- cutree(hc.w, k = 2) # cut 2 clusters
+memb2
+
+
+```
+
+##15.a clustering using single methods and try 2/3/4/5 clusters
+```{r}
+d.norm <- dist(pharma.df.norm, method = "euclidean")
+plot.new()
+hc.s <- hclust(d.norm, method = "single")
+plot(hc.s, hang = -1, ann = FALSE)
+memb5 <- cutree(hc.s, k = 5) # cut 5 clusters
+memb5
+memb4 <- cutree(hc.s, k = 4) # cut 4 clusters
+memb4
+memb3 <- cutree(hc.s, k = 3) # cut 3 clusters
+memb3
+memb2 <- cutree(hc.s, k = 2) # cut 2 clusters
+memb2
+
+```
+
+## 15.a clustering using kmeans and try 2/3/4/5 clusters
+```{r}
+d.norm <- dist(pharma.df.norm, method = "euclidean")
+set.seed(2)
+km2 <- kmeans(d.norm, 2)
+km2$cluster
+km3 <- kmeans(d.norm, 3)
+km3$cluster
+km4 <- kmeans(d.norm, 4)
+km4$cluster
+km5 <- kmeans(d.norm, 5)
+km5$cluster
+```
+
+## 15.b
+```{r}
+memb4 <- cutree(hc.w, k = 4) # cut 4 clusters using Ward's
+memb4
+centers <- aggregate( . ~ memb4, data = pharma.df[3:11], FUN = mean)
+centers
+
+```
+
+## 15.c
+```{r}
+table(pharma.df$Median_Recommendation, memb4)
+table(pharma.df$Location, memb4)
+table(pharma.df$Exchange, memb4)
+```
+
