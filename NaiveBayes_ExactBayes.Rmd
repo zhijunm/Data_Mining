@@ -1,0 +1,120 @@
+---
+title: "End of chapter 8&9"
+author: "Zhijun Ma"
+date: "February 5, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load data and create dummy variable
+```{r accidents}
+accidents.df <- read.csv("AccidentsFull.csv")
+View(accidents.df)
+accidents.df$INJURY <- ifelse(accidents.df$MAX_SEV_IR == 0, "NO", "YES")
+str(accidents.df)
+```
+
+## check the probability of a reported injury
+```{r}
+inj.tbl <- table(accidents.df$INJURY)
+inj.tbl["YES"]
+inj.prob<-prop.table(table(accidents.df$INJURY))
+inj.prob
+```
+
+## as.factor
+```{r}
+for (i in c(1:dim(accidents.df)[2])){
+  accidents.df[,i] <- as.factor(accidents.df[,i])
+}
+str(accidents.df)
+```
+
+
+
+## select first 12 rows and two predictors weather_r and traf_con_r
+```{r pressure, echo=FALSE}
+accidents.df1 <- accidents.df[c(1:12),c("WEATHER_R","TRAF_CON_R","INJURY")]
+View(accidents.df1)
+
+## pivot
+ftable(accidents.df1)
+```
+
+## naive bayes %
+```{r}
+
+library(e1071)
+library(caret)
+library(klaR)
+nb <- naiveBayes(INJURY ~ ., data = accidents.df1)
+nb
+predict(nb, newdata=accidents.df1, type="raw")       
+
+nb2 <- train(INJURY ~ TRAF_CON_R + WEATHER_R, 
+      data = accidents.df1, method = "nb")
+
+predict(nb2, newdata = accidents.df1)
+predict(nb2, newdata = accidents.df1,type = "raw")
+
+                               
+```
+prop.table(table(accidents.df1$INJURY, accidents.df1$WEATHER_R), margin = 1)   
+
+## exact bayes %
+```{r}
+#To find P(Injury=yes|WEATHER_R = 1, TRAF_CON_R =0):
+#Numerator = (proportion of combination {WEATHER_R =1, TRAF_CON_R = 0}when Injury =  
+#               yes) * (proportion of injuries in all cases)
+#Denominator = proportion of combination {WEATHER_R =1, TRAF_CON_R = 0} in 
+#all cases
+#you want to reference the resulting table  for this based on the three variables
+numerator1 <- 2/3 * 3/12
+denominator1 <- 3/12
+#the probability is given by ration
+prob110 <- numerator1/denominator1
+prob110
+#so P(Injury=yes|WEATHER_R = 1, TRAF_CON_R =0) = 0.667
+```
+
+## classify the 12 accidents using these % and a cutoff of 0.5.
+```{r}
+prob.inj <- c(0.667,0.167,0,0,0.667,0.167,0.167,0.667,0.167,0.167,0.167,0)
+accidents.df1$prob.inj <- prob.inj
+accidents.df1
+accidents.df1$pred.prob <- ifelse(accidents.df1$prob.inj > 0.5, "yes", "no")
+accidents.df1
+```
+
+## use the entire dataset and partition 60-40
+```{r}
+library(e1071)
+library(caret)
+train.index <- sample(c(1:dim(accidents.df)[1]), dim(accidents.df)[1]*0.6)  
+train.df <- accidents.df[train.index, ]
+valid.df <- accidents.df[-train.index, ]
+colnames(train.df)[1] <- "HOUR_I_R"
+colnames(valid.df)[1] <- "HOUR_I_R"
+vars <- c("INJURY","HOUR_I_R","ALIGN_I","WRK_ZONE","WKDY_I_R",
+          "INT_HWY",	"LGTCON_I_R",	"PROFIL_I_R",	"SPD_LIM",	"SUR_COND",
+          "TRAF_CON_R",	"TRAF_WAY",	"WEATHER_R")
+nb <- naiveBayes(INJURY ~ ., data = train.df[, vars])
+predt.df <- predict(nb, train.df[, vars])
+confusionMatrix(predt.df,train.df$INJURY)
+```
+
+## overall error for validation set
+```{r}
+confusionMatrix(predict(nb, valid.df[, vars]),valid.df$INJURY)
+```
+
+## conditional probability output
+```{r}
+options(digits = 2)
+nb
+
+```
+
