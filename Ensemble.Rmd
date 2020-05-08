@@ -1,0 +1,125 @@
+---
+title: "End of chapter13"
+author: "Zhijun Ma"
+date: "March 4, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### read and partition the data 
+```{r }
+edf <- read.csv("c:/Users/mazhi/Documents/R/560_data_mining/eBayAuctions.csv")
+edf$Competitive. = as.factor(edf$Competitive.)
+set.seed(1) 
+train.index <- sample(c(1:dim(edf)[1]), dim(edf)[1]*0.6)  
+t.df <- edf[train.index, ]
+v.df <- edf[-train.index, ]
+```
+
+## a.run classification tree
+```{r pressure, echo=FALSE}
+library(rpart)
+library(rpart.plot)
+library(caret)
+ct <-rpart(Competitive. ~ ., data=t.df, method = "class")
+pred.ct <- predict(ct, v.df, type = "class")
+confusionMatrix(pred.ct, v.df$Competitive., positive = "1")
+
+library(gains)
+#groups = 10 is the number of rows in teh gains table
+#gains() provides a Gains table for a vector of predictions vs actual
+#we are going to get the prediction using the predict, the model rt and validation set
+#this gets the predictions [,2]
+gain <- gains(as.numeric(v.df$Competitive.),  predict(ct, v.df)[,2], groups = 10)
+str(gain)
+
+#we are interested in the mean.resp of gain object for each row
+#we want to adjust this by the mean of the target variable
+#using the code in Figure 5.7 from the book we get
+#the gain is sorted by the mean response when it is generated
+#we assign the calculation to a variable called heights because want to use it later
+heights <- gain$mean.resp/mean(as.numeric(v.df$Competitive.))
+heights
+
+plot.new()
+midpoints <- barplot(heights, names.arg = gain$depth, ylim = c(0,9),
+                     xlab = "Percentile", ylab = "Mean Response", 
+                     main = "Decile-wise chart for validation data")
+#label the decile values with heigths
+text(x=midpoints, y = heights, labels = round(heights, 1), pos = 3.5, cex = 0.7,
+     col = "red")
+#if we examine gain we get
+gain
+```
+
+## b. run boosted tree
+```{r}
+library(adabag)
+boost <- boosting(Competitive. ~ ., data = t.df, method = "class")
+pred.bt <- predict(boost, v.df, type = "class")
+confusionMatrix(factor(pred.bt$class), v.df$Competitive., positive = "1")
+
+gain2 <- gains(as.numeric(v.df$Competitive.), as.numeric(pred.bt$class))
+heights2 <- gain2$mean.resp/mean(as.numeric(v.df$Competitive.))
+heights2
+
+plot.new()
+midpoints <- barplot(heights2, names.arg = gain2$depth, ylim = c(0,9),
+                     xlab = "Percentile", ylab = "Mean Response", 
+                     main = "Decile-wise chart for validation data")
+#label the decile values with heigths
+text(x=midpoints, y = heights2, labels = round(heights2, 1), pos = 3.5, cex = 0.7,
+     col = "red")
+#if we examine gain we get
+gain2
+```
+
+## c. run bagged tree
+```{r}
+bag <- bagging(Competitive. ~ ., data = t.df, method = "class")
+pred.bg <- predict(bag, v.df, type="class")
+confusionMatrix(factor(pred.bg$class), v.df$Competitive., positive = "1")
+
+gain3 <- gains(as.numeric(v.df$Competitive.), as.numeric(pred.bg$class))
+heights3 <- gain3$mean.resp/mean(as.numeric(v.df$Competitive.))
+heights3
+
+plot.new()
+midpoints <- barplot(heights3, names.arg = gain3$depth, ylim = c(0,9),
+                     xlab = "Percentile", ylab = "Mean Response", 
+                     main = "Decile-wise chart for validation data")
+#label the decile values with heigths
+text(x=midpoints, y = heights3, labels = round(heights3, 1), pos = 3.5, cex = 0.7,
+     col = "red")
+#if we examine gain we get
+gain3
+```
+
+## d. run random forest
+```{r}
+library(randomForest)
+rf <- randomForest(Competitive. ~ ., data = t.df, 
+                   mtry = 4, method = "class")
+pred.rf <- predict(rf, v.df, type = "class")
+confusionMatrix(pred.rf, v.df$Competitive., positive = "1")
+str(pred.rf)
+str(v.df$Competitive.)
+
+gain4 <- gains(as.numeric(v.df$Competitive.), as.numeric(pred.rf))
+heights4 <- gain4$mean.resp/mean(as.numeric(v.df$Competitive.))
+heights4
+
+plot.new()
+midpoints <- barplot(heights4, names.arg = gain4$depth, ylim = c(0,9),
+                     xlab = "Percentile", ylab = "Mean Response", 
+                     main = "Decile-wise chart for validation data")
+#label the decile values with heigths
+text(x=midpoints, y = heights4, labels = round(heights4, 1), pos = 3.5, cex = 0.7,
+     col = "red")
+#if we examine gain we get
+gain4
+```
+
