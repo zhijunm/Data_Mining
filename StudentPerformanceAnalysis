@@ -1,0 +1,315 @@
+---
+title: "Student_Performance"
+author: "Zhijun Ma"
+date: "June 4, 2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+1)	Data Set and Research Questions
+My data set is student performance data obtained from University of California Irvine (https://archive.ics.uci.edu/ml/datasets/student+performance#). It has 382 student records of demographic and family information and math grades from period 1 to period 3. 
+The problem we would like to solve is based on the student information and grades in period 1,  and 2, can we predict their grade in period 3?
+
+2)  Descriptive Analysis
+Summary of our dataset is as follows:
+```{r}
+per <- read.csv("c:/Users/mazhi/Documents/R/student_performance.csv")
+per <- per[,-c(34,35,36)]
+summary(per)
+```
+There are total 33 variables, G3 is the dependent variable.
+
+Many of independent variables are binary:
+school - student's school (binary: 'GP' - Gabriel Pereira or 'MS' - Mousinho da Silveira)
+sex - student's sex (binary: 'F' - female or 'M' - male)
+address - student's home address type (binary: 'U' - urban or 'R' - rural)
+famsize - family size (binary: 'LE3' - less or equal to 3 or 'GT3' - greater than 3)
+Pstatus - parent's cohabitation status (binary: 'T' - living together or 'A' - apart)
+schoolsup - extra educational support (binary: yes or no) 
+famsup - family educational support (binary: yes or no)
+paid - extra paid classes within the course subject (Math or Portuguese) (binary: yes or no)
+activities - extra-curricular activities (binary: yes or no)
+nursery - attended nursery school (binary: yes or no)
+higher - wants to take higher education (binary: yes or no)
+internet - Internet access at home (binary: yes or no)
+romantic - with a romantic relationship (binary: yes or no)
+
+For the rest of varialbes (not binary ones), we will take a look at them during our data exploration.
+
+age - student's age (numeric: from 15 to 22)
+```{r}
+age <- table(per$age)
+barplot(age[order(age, decreasing = TRUE)],xlab = "age", ylab = "frequency", main = "Frequencies of Stduent Age", col = c("bisque4","bisque3","bisque2","bisque1","blanchedalmond","beige","white"))
+```
+Most of the students are in the age range of 15-18.
+.......................................................................
+
+
+reason - reason to choose this school (nominal: close to 'home', school 'reputation', 'course' preference or 'other')
+```{r}
+re <- table(per$reason)
+barplot(re[order(re, decreasing = TRUE)], xlab = "reason of choose this school", ylab = "frequency", main = "Reason of Choose this School",col = c("bisque4","bisque3","bisque2","bisque1"))
+```
+.......................................................................
+
+
+guardian - student's guardian (nominal: 'mother', 'father' or 'other')
+```{r}
+ga <- table(per$guardian)
+barplot(ga[order(ga, decreasing = TRUE)], xlab = "student's guardian", ylab = "frequency", main = "Student's Guardian",col = c("bisque4","bisque3","bisque2"))
+```
+.......................................................................
+
+
+Fedu - father's education (numeric: 0 - none, 1 - primary education (4th grade), 2 - 5th to 9th grade, 3 - secondary education or 4 - higher education)
+Medu - mother's education (numeric: 0 - none, 1 - primary education (4th grade), 2 - 5th to 9th grade, 3 - secondary education or 4 - higher education)
+```{r}
+father_education <- table(per$Fedu)
+mother_education <- table(per$Medu)
+ed <- rbind(father_education,mother_education)
+barplot(ed, 
+        col=colors()[c(98,21)] , 
+        border="white", 
+        font.axis=2, 
+        beside=T, 
+        legend=rownames(ed), 
+        xlab="Father & Mother Education", 
+        font.lab=2)
+```
+The majority of parents' education is above primary education.
+.......................................................................
+
+
+Mjob - mother's job (nominal: 'teacher', 'health' care related, civil 'services' (e.g. administrative or police), 'at_home' or 'other')
+Fjob - father's job (nominal: 'teacher', 'health' care related, civil 'services' (e.g. administrative or police), 'at_home' or 'other')
+```{r}
+mother_job <- table(per$Mjob)
+father_job <- table(per$Fjob)
+job <- rbind(father_job,mother_job)
+barplot(job, 
+        col=colors()[c(27,54)] , 
+        border="white", 
+        font.axis=2, 
+        beside=T, 
+        legend=rownames(job), 
+        xlab="Father & Mother Job", 
+        font.lab=2)
+```
+.......................................................................
+
+
+traveltime - home to school travel time (numeric: 1 - <15 min., 2 - 15 to 30 min., 3 - 30 min. to 1 hour, or 4 - >1 hour)
+```{r}
+tr <- table(per$traveltime)
+barplot(tr, xlab = "home to school travel time",ylab = "frequency", main = "Travel Time",col = c("bisque1","bisque2","bisque3","bisque4"))
+```
+More than half of the studnets are very close to school, within 15 mins travel time.
+.......................................................................................
+
+
+studytime - weekly study time (numeric: 1 - <2 hours, 2 - 2 to 5 hours, 3 - 5 to 10 hours, or 4 - >10 hours)
+```{r}
+st <- table(per$studytime)
+barplot(st,xlab = "weekly study time",ylab = "frequency", main = "Stduy Time",col = c("bisque1","bisque2","bisque3","bisque4"))
+```
+Most of the students can spend more than 2 hours to study weekly.
+.......................................................................
+
+
+failures - number of past class failures (numeric: n if 1<=n<3, else 4)
+```{r}
+fa <- table(per$failures)
+barplot(fa, xlab = "number of past class failures",ylab = "frequency", main = "Failures",col = c("bisque1","bisque2","bisque3","bisque4"))
+```
+Most of students behave well on past classes, no failure.
+.......................................................................
+
+
+famrel - quality of family relationships (numeric: from 1 - very bad to 5 - excellent)
+```{r}
+re <- table(per$famrel)
+barplot(re, xlab = "quality of family relationships",ylab = "frequency", main = "Family Relationship Quality",col = c("beige","bisque1","bisque2","bisque3","bisque4"))
+```
+Most of the students have high quality family relationship.
+.......................................................................
+
+
+freetime - free time after school (numeric: from 1 - very low to 5 - very high)
+```{r}
+fr <- table(per$freetime)
+barplot(fr, xlab = "free time after school",ylab = "frequency", main = "Free Time After School",col = c("beige","bisque1","bisque2","bisque3","bisque4"))
+```
+Most of the students have moderate free time after school.
+........................................................................
+
+
+goout - going out with friends (numeric: from 1 - very low to 5 - very high)
+```{r}
+go <- table(per$goout)
+barplot(go, xlab = "going out with friends", ylab = "frequency", main = "Going Out witih Friends",col = c("beige","bisque1","bisque2","bisque3","bisque4"))
+```
+Most of students have moderate opportunities to go out with friends.
+.......................................................................
+
+
+Dalc - workday alcohol consumption (numeric: from 1 - very low to 5 - very high)
+Walc - weekend alcohol consumption (numeric: from 1 - very low to 5 - very high)
+```{r}
+workday_alcohol <- table(per$Dalc)
+weekend_alcohol <- table(per$Walc)
+dw <- rbind(workday_alcohol,weekend_alcohol)
+barplot(dw, 
+        col=colors()[c(89,12)] , 
+        border="white", 
+        font.axis=2, 
+        beside=T, 
+        legend=rownames(dw), 
+        xlab="Workday & Weekend Alcohol Consumption", 
+        font.lab=2)
+```
+The majority of students has very low alcohol consumption during workday and weekend. Generally students have lower alcohol consumption during workdays than weekends.
+.............................................................................
+
+
+health - current health status (numeric: from 1 - very bad to 5 - very good)
+```{r}
+he <- table(per$health)
+barplot(he, xlab = "current health status",ylab = "frequency", main = "Current Health Status",col = c("beige","bisque1","bisque2","bisque3","bisque4"))
+```
+Almost half of the students have good or very good health status. But still there are around 100 students have low or very low health status.
+.......................................................................
+
+
+absences - number of school absences (numeric: from 0 to 93)
+```{r}
+boxplot(per$absences,
+        xlab = " absences", 
+        ylab = "numbers",
+        main = "Number of School Absences", 
+        col = "orange",
+        border = "red",
+        horizontal = TRUE)
+```
+Most of students' attendance are very good, except for some students with very high absences. 
+
+Now let's take a look at period 1 and 2 grades by sex.
+```{r}
+class(per$G1) # grade type is factor
+per$G1 <- as.numeric(per$G1)
+per$G2 <- as.numeric(per$G2)
+per$G3 <- as.numeric(per$G3)
+class(per$G3)
+summary(per$G1)
+summary(per$G2)
+
+library(ggplot2)
+ggplot(per, aes(x=G1, y=sex, col=sex)) + 
+   geom_boxplot() +  
+   scale_x_continuous(name = "Grade in period 1", breaks = seq(0,20,2)) + 
+   scale_y_discrete(name = "sex") +
+   ggtitle("Boxplot of period 1 grade by sex")
+
+ggplot(per, aes(x=G2, y=sex, col=sex)) + 
+   geom_boxplot() +  
+   scale_x_continuous(name = "Grade in period 2", breaks = seq(0,20,2)) + 
+   scale_y_discrete(name = "sex") +
+   ggtitle("Boxplot of period 2 grade by sex")
+```
+.......................................................................
+
+
+Period 1 grade by absences
+```{r}
+ggplot(per, aes(x = G1, y = absences)) +
+    geom_boxplot(aes(color = factor(school))) +
+    scale_x_continuous(name = "Grade in period 1", breaks = seq(0,20,2)) + 
+    scale_y_continuous(name = "absences") +
+    ggtitle("Boxplot of period 1 grade by school")
+```
+.......................................................................
+
+
+Check NAs
+```{r}
+# Count NA column wise
+sapply(per,function(x)sum(is.na(x)))
+# Count NA row wise
+rowSums(is.na(per))
+```
+...............................................................................
+
+
+3) Best Analysis Method
+Based on the research question and our exploration of this dataset, CART, specifically the regression tree might be an appropriate model as our predictive variable is numeric grade.
+
+4) Statistical Analysis
+After splitting data into traning and test sets, we trained our data with training set. The tree plot is as below.
+```{r}
+set.seed(12)
+train.index <- sample(c(1:dim(per)[1]), dim(per)[1]*0.8)
+trainper <- per[train.index, ]
+testper <- per[-train.index, ]
+library(rattle)
+library(rpart)
+library(rpart.plot)
+rt <- rpart(G3 ~ ., data = trainper, method = "anova", minbucket = 1, maxdepth = 30, cp = 0.001)
+prp(rt)
+str(rt)
+t(t(rt$variable.importance))
+```
+And we also get a list of variable importance. From the list above, grades in period 1 and 2 play are the two most important variables, followed by absences, failures, mother education, and father education. activities, school support, free time after school and weekday alcohol consumption are not that important.
+
+Then we used this regression tree model to predict the period 3 grade in testing dataset. The RMSE is 2.33. To further check the fitness of our model, I compared the RMSE and errors in traning set with those in testing set. The RMSE in training set is only 0.95. And there is also a larger variance of testing error boxplot than that of training error boxplot. Overall the model predicts well on the training set, but not so good on the testing set. It is likely that our model has been over fit.
+```{r}
+library(forecast)
+pred <- predict(rt,testper[,-c(33)])
+accuracy(pred, testper$G3)
+test.err <- pred - testper$G3
+
+pred2 <- as.integer(predict(rt,trainper[,-c(33)]))
+accuracy(pred2, trainper$G3)
+train.err <- pred2 - trainper$G3
+
+err <- data.frame(Error = c(test.err, train.err),
+                  Set = c(rep("Testing", length(test.err)),
+                          rep("Training", length(train.err))))
+ggplot(err, aes(x = Set, y = Error)) + geom_boxplot()
+```
+
+
+I tried new models with three alternative ways. See if we can get a better RMSE.
+1) Prune the tree 
+I pruned the full tree using cross validation error, and the new RMSE is 2.42. Not improved
+```{r}
+cv <- rpart(G3 ~ ., data = trainper, method = "anova",  cp = 0.001, xval = 5)
+# use printcp() to print the table. 
+printcp(cv)
+pruned <- prune(cv, cp = cv$cptable[which.min(cv$cptable[,"xerror"]),"CP"])
+accuracy(as.integer(predict(pruned, testper[,-c(33)])), testper$G3)
+```
+
+2) Less deeper tree
+create a less deeper tree, and the new RMSE is 2.42. Not improved.
+```{r}
+tr.shallow <- rpart(G3 ~ ., data = trainper, method = "anova")
+prp(tr.shallow)
+accuracy(as.integer(predict(tr.shallow, testper[,-c(33)])), testper$G3)
+```
+
+3) Regression tree with party package
+RMSE of new tree with party package is 2.06. RMSE improved with party package.
+```{r}
+library(party)
+tr <- ctree(G3 ~ ., data=trainper)
+# plot tree
+plot(tr, uniform=TRUE, branch=0.6, margin=0.05, main="Training Set Tree (party)")
+pred_party <- as.integer(predict(tr, testper[,-c(33)]))
+accuracy(pred_party, testper$G3)
+accuracy(as.integer(predict(tr, trainper[,-c(33)])), trainper$G3)
+```
+After trying several models, the regression tree model derived by party package is the best. The RMSE is 2.06. And the RMSE in the training dataset is 1.97 and very close to 2.06, which means there's no over fit for this model. Limitation of the model is the size of training set is not very large. There are only 382 observations in the dataset and 80% of them was splitted as the training set. If we can get more observations, the accuracy of model will be improved.  
+
+
